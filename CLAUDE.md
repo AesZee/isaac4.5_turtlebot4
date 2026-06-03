@@ -1,7 +1,7 @@
 # CLAUDE.md — isaac_tb4 working rules
 
 Isaac Sim 4.5 + TurtleBot4, ROS 2 Humble. This file is the standing context for the repo.
-The current task lives in `CLAUDE_CODE_GOAL.md`. Background: `README.md`, `COMMANDS.md`,
+The current task lives in `docs/CLAUDE_CODE_GOAL.md`. Background: `README.md`, `COMMANDS.md`,
 and `~/Downloads/isaacsim_turtlebot4_setup.md`. **Read those before acting; don't restate
 their content back unless asked.**
 

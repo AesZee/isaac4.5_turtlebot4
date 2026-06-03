@@ -5,11 +5,15 @@ Full setup notes: ~/Downloads/isaacsim_turtlebot4_setup.md
 Terminal command cheat sheet: [COMMANDS.md](COMMANDS.md)
 
 ## Layout
-- scripts/  Python scripts (run with `isaac-py <file>`)
+- scripts/  Python scripts (run with `isaac-py <file>`): spawn, dock controller, OAK-D detection
+- verify/   scripted acceptance gates + `artifacts/` (sample frames, detection msg, map render)
+- ros2_ws/  project-local colcon ws: vendored `depthai_ros_msgs` (build with `colcon build`)
 - usd/      robot USD (turtlebot4.usd) + URDF source
 - scenes/   ground-floor scene USD built from the SLAM map (A-1_ground.usd)
-- maps/     ROS occupancy maps (A-1_map.pgm/.yaml)
+- maps/     ROS occupancy maps (A-1_map.pgm/.yaml, A-1_phase3_map.*)
 - layouts/  saved GUI layouts (.json)
+- docs/     task specs (CLAUDE_CODE_GOAL*.md); logs/ holds ignored run logs
+- root docs: README.md, COMMANDS.md, TESTING.md, STATUS.md, CLAUDE.md
 
 ## Assets (already built)
 - usd/turtlebot4.usd      — robot, converted from turtlebot4_description URDF

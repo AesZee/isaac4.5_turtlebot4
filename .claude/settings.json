@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Bash(ros2 topic list)",
+      "Bash(ros2 topic info *)",
+      "Bash(ros2 topic echo *)",
+      "Bash(ros2 topic hz *)",
+      "Bash(ros2 node list)",
+      "Bash(ros2 interface show *)",
+      "Bash(ros2 bag record *)",
+      "Bash(ros2 daemon stop)",
+      "Bash(timeout *)",
+      "Bash(isaac-py *)",
+      "Bash(python3 *)",
+      "Bash(./verify/check_topics.sh*)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git checkout -b *)",
+      "Bash(git log *)",
+      "Bash(cp *)",
+      "Edit(scripts/**)",
+      "Edit(usd/**)",
+      "Edit(maps/**)",
+      "Edit(README.md)",
+      "Edit(COMMANDS.md)",
+      "Write(verify/**)",
+      "Write(STATUS.md)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(git push --force*)",
+      "Bash(git push -f *)",
+      "Bash(git reset --hard *)",
+      "Bash(git clean -fdx*)",
+      "Read(./.env)",
+      "Edit(usd/turtlebot4.usd.bak)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/guard.sh" }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "cat ${CLAUDE_PROJECT_DIR}/STATUS.md 2>/dev/null || true" }
+        ]
+      }
+    ]
+  }
+}

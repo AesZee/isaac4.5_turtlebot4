@@ -41,6 +41,14 @@ python3 ~/isaac_tb4/verify/check_spatial_detection.py     # PASS = labeled detec
 Type: `depthai_ros_msgs/msg/SpatialDetectionArray` (vendored in `ros2_ws/src`, built once with
 `cd ~/isaac_tb4/ros2_ws && colcon build`).
 
+### Scripted mapping + lidar/SLAM regression (Phase 3)
+```bash
+isaac-slam                                       # slam_toolbox (sim time) — leave running
+python3 ~/isaac_tb4/verify/scripted_teleop.py    # drive a bounded sweep so SLAM maps
+ros2 run nav2_map_server map_saver_cli -f maps/A-1_phase3_map --ros-args -p use_sim_time:=true
+./verify/check_map.sh maps/A-1_phase3_map        # PASS = base contract + /scan intact + valid map
+```
+
 ### Drive (teleop)
 ```bash
 isaac-teleop         # keyboard teleop on /cmd_vel  (i=fwd, ,=back, j/l=turn, k=stop, q/z=speed)

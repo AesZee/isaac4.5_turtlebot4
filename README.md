@@ -92,6 +92,23 @@ depth-fusion + message contract are identical to hardware.
 - Tune the target (`KNOWN_OBJ_*`) and `ENABLE_OAKD`/`ADD_KNOWN_OBJECT` at the top
   of `scripts/spawn_turtlebot4.py`. `OAKD_DEBUG=1` prints the camera's world pose.
 
+## Lidar / SLAM regression guard + scripted mapping (Phase 3)
+The OAK-D additions must not regress the verified lidar contract. `verify/check_map.sh`
+re-asserts the base contract AND that `/scan` is unchanged (frame `rplidar_link`,
+`range_min >= SCAN_MIN_RANGE`), then validates a saved map. Build a map without a
+keyboard via SLAM + a scripted teleop routine (run the sim in the DEFAULT config):
+
+    # terminal 1: isaac-py scripts/spawn_turtlebot4.py        (default = docked, no test cube)
+    # terminal 2:
+    isaac-ros ; isaac-slam                                    # slam_toolbox, sim time
+    # terminal 3:
+    isaac-ros ; python3 verify/scripted_teleop.py             # drives a bounded sweep routine
+    isaac-ros ; ros2 run nav2_map_server map_saver_cli -f maps/<name> --ros-args -p use_sim_time:=true
+    ./verify/check_map.sh maps/<name>                         # PASS = contract intact + valid map
+
+A sample map built this way is at `maps/A-1_phase3_map.pgm/.yaml` (PNG render in
+`verify/artifacts/`). RViz / visual nav sign-off is left to a human.
+
 ## Realistic driving (matches the real TurtleBot4)
 - **Wheels are velocity-driven.** The URDF import left the wheels in *position* drive
   (stiffness 625, damping 0) so /cmd_vel barely moved the robot. They're now velocity

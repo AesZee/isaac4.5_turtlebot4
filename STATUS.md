@@ -24,15 +24,21 @@ table + Next action + Log after every completed or failed step. Keep entries sho
 | baseline (verified contract) | GREEN | PASS | gate fixed (DDS env + pipefail/grep-q false-neg); commit c99ad24 |
 | 1 — OAK-D RGB + depth + points | GREEN | PASS | 4 /oakd topics @rate; camera_info frame+K ok; frames saved; commit 380ead2 |
 | 2 — detection + spatial 3D | GREEN | PASS | red_cube @ finite 3D (0.006,0.019,0.641)m; vendored depthai_ros_msgs; commit b9ccad1 |
-| 3 — lidar/SLAM regression guard | in progress | — | base contract still green; build+save a map |
+| 3 — lidar/SLAM regression guard | GREEN | PASS | base+/scan intact; map maps/A-1_phase3_map.* (60/10/30); commit 9410f41 |
 | 4 — HMI extension | **DEFERRED (manual/GUI)** | — | do NOT attempt unattended |
 
 ## Next action
-Phase 3: regression-guard lidar/SLAM. Restart the sim in DEFAULT config (docked, yaw 0 — the
-verified-working spawn) and re-run `./verify/check_topics.sh` (base contract must stay green:
-/scan frame rplidar_link, filtered at SCAN_MIN_RANGE). Then build a map via scripted teleop
-(publish /cmd_vel to drive) with `isaac-slam`, save it to maps/ with map_saver, and confirm the
-saved .pgm/.yaml exist + are non-empty. Do NOT do RViz/visual nav sign-off (human's).
+DONE — Phases 1–3 all GREEN on branch feat/oakd-phases-1-3. Awaiting human: (1) visual sign-off of
+verify/artifacts/ (oakd_rgb.png, oakd_depth.png, A-1_phase3_map.png) + RViz/nav; (2) decide whether
+to fold the env-gated camera/cube into committed defaults or keep as-is; (3) Phase 4 (HMI GUI) which
+was DEFERRED and not attempted. Optional: add isaac-* aliases for the new entry points (see below) —
+NOT added because editing the global ~/.bashrc unattended was out of scope; commands are documented
+instead. Sim + SLAM may still be running in the background (check `pgrep -f spawn_turtlebot[4]`).
+
+## Suggested aliases for the human (add to ~/.bashrc; not added unattended)
+- isaac-oakd-frames : python3 ~/isaac_tb4/verify/save_oakd_frames.py
+- isaac-detect      : source ~/isaac_tb4/ros2_ws/install/setup.bash; python3 ~/isaac_tb4/scripts/oakd_spatial_detection.py
+- isaac-teleop-auto : python3 ~/isaac_tb4/verify/scripted_teleop.py
 
 ## Phase-2 reproduction (for the human)
 Detection scenario needs a clear camera view; the committed default spawn (0,0)+yaw0 faces a near
@@ -61,4 +67,10 @@ proceeding would require touching the real-robot config or a second Isaac instan
   built into ros2_ws; scripts/oakd_spatial_detection.py (color-seg + depth->3D) publishes
   /oakd/nn/spatial_detections. Root cause of empty camera view: spawn (0,0) faces a wall at x=0.24
   (map +X edge); fixed via SPAWN_YAW=pi + cube on -X + SPAWN_NO_DOCK. Gate PASS (red_cube, finite 3D).
-  Base contract still green. Commit b9ccad1. Detector left running (bg). Starting Phase 3.
+  Base contract still green. Commit b9ccad1. Then refactored cube behind SPAWN_KNOWN_OBJECT (default
+  off) so it stays out of the verified scene/map; re-verified Phase 2 PASS (commit 6cc0316).
+- phase3 GREEN: restarted sim in DEFAULT config (docked, yaw0, no cube). check_topics.sh PASS; /scan
+  frame rplidar_link, 360deg, range_min 0.32 (filter intact). isaac-slam + verify/scripted_teleop.py
+  (bounded /cmd_vel sweep) built a map; map_saver -> maps/A-1_phase3_map.pgm/.yaml (60% free/10% occ/
+  30% unknown, valid). verify/check_map.sh PASS. PNG render in artifacts/. Commit 9410f41.
+- ALL PHASES 1-3 GREEN. Phase 4 (HMI) deliberately NOT attempted (deferred/GUI).

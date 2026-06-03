@@ -3,3 +3,4 @@ __pycache__/
 **/.thumbs/
 verify/artifacts/*.bag
 *.log
+.claude/settings.local.json

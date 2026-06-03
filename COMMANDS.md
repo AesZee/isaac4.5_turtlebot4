@@ -29,6 +29,18 @@ python3 ~/isaac_tb4/verify/save_oakd_frames.py      # save RGB+depth frames -> v
 Topics: `/oakd/rgb/image_raw` `/oakd/rgb/camera_info` `/oakd/stereo/image_raw` `/oakd/points`
 (frame `oakd_rgb_camera_optical_frame`). Render-gated like `/scan`.
 
+### Spatial detection (Phase 2)
+```bash
+# sim facing the open room with the known object in view (dock omitted):
+SPAWN_NO_DOCK=1 SPAWN_YAW=3.14159 SPAWN_HEADLESS=1 isaac-py ~/isaac_tb4/scripts/spawn_turtlebot4.py
+# detector + gate (each needs the project ws for depthai_ros_msgs):
+source ~/isaac_tb4/ros2_ws/install/setup.bash ; isaac-ros
+python3 ~/isaac_tb4/scripts/oakd_spatial_detection.py     # publishes /oakd/nn/spatial_detections
+python3 ~/isaac_tb4/verify/check_spatial_detection.py     # PASS = labeled detection + finite 3D pose
+```
+Type: `depthai_ros_msgs/msg/SpatialDetectionArray` (vendored in `ros2_ws/src`, built once with
+`cd ~/isaac_tb4/ros2_ws && colcon build`).
+
 ### Drive (teleop)
 ```bash
 isaac-teleop         # keyboard teleop on /cmd_vel  (i=fwd, ,=back, j/l=turn, k=stop, q/z=speed)

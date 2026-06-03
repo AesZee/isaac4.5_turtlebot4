@@ -23,16 +23,23 @@ table + Next action + Log after every completed or failed step. Keep entries sho
 |-------|-------|-----------|-------|
 | baseline (verified contract) | GREEN | PASS | gate fixed (DDS env + pipefail/grep-q false-neg); commit c99ad24 |
 | 1 — OAK-D RGB + depth + points | GREEN | PASS | 4 /oakd topics @rate; camera_info frame+K ok; frames saved; commit 380ead2 |
-| 2 — detection + spatial 3D | in progress | — | assert `/oakd/nn/spatial_detections` with object in view |
-| 3 — lidar/SLAM regression guard | not started | — | base contract still green; build+save a map |
+| 2 — detection + spatial 3D | GREEN | PASS | red_cube @ finite 3D (0.006,0.019,0.641)m; vendored depthai_ros_msgs; commit b9ccad1 |
+| 3 — lidar/SLAM regression guard | in progress | — | base contract still green; build+save a map |
 | 4 — HMI extension | **DEFERRED (manual/GUI)** | — | do NOT attempt unattended |
 
 ## Next action
-Phase 2: stand up an OAK-D spatial-detection pipeline publishing `/oakd/nn/spatial_detections`
-(depthai_ros_driver type: `depthai_ros_msgs/msg/SpatialDetectionArray`) with a known object placed
-in front of the robot in-sim; assert one labeled detection with a finite 3D pose; save the raw msg
-to verify/artifacts/. NOTE: robot starts docked facing the dock plate (~0.06-0.12 m) — place the
-object clear of the dock / in the camera FOV, or undock first, so the detector has a real target.
+Phase 3: regression-guard lidar/SLAM. Restart the sim in DEFAULT config (docked, yaw 0 — the
+verified-working spawn) and re-run `./verify/check_topics.sh` (base contract must stay green:
+/scan frame rplidar_link, filtered at SCAN_MIN_RANGE). Then build a map via scripted teleop
+(publish /cmd_vel to drive) with `isaac-slam`, save it to maps/ with map_saver, and confirm the
+saved .pgm/.yaml exist + are non-empty. Do NOT do RViz/visual nav sign-off (human's).
+
+## Phase-2 reproduction (for the human)
+Detection scenario needs a clear camera view; the committed default spawn (0,0)+yaw0 faces a near
+wall on +X. Reproduce with: terminal 1 `SPAWN_NO_DOCK=1 SPAWN_YAW=3.14159 SPAWN_HEADLESS=1 isaac-py
+scripts/spawn_turtlebot4.py`; terminal 2 `source ros2_ws/install/setup.bash; isaac-ros; python3
+scripts/oakd_spatial_detection.py`; terminal 3 same source+isaac-ros then
+`python3 verify/check_spatial_detection.py`.
 
 ## Stop conditions (leave for human)
 A gate fails twice · baseline goes red · a step needs the GUI · a change might be destructive ·
@@ -48,4 +55,10 @@ proceeding would require touching the real-robot config or a second Isaac instan
   camera_info K=fx/fy 465.45, cx 320, cy 180. verify/save_oakd_frames.py saved rgb+depth to artifacts/.
   Commits 380ead2 (feat) + docs. Sim relaunched once (PYTHONUNBUFFERED) — single instance maintained.
   Gotcha: never `pkill -f spawn_turtlebot4.py` from a shell whose own cmdline contains that string (it
-  kills itself). Starting Phase 2.
+  kills itself) — kill by PID excluding $$/$PPID. Sim relaunch can segfault in viewport-init if done
+  too soon after a kill; wait ~6s + ensure GPU clear (nvidia-smi) then relaunch.
+- phase2 GREEN: vendored depthai_ros_msgs (authentic SpatialDetection[Array] from upstream humble)
+  built into ros2_ws; scripts/oakd_spatial_detection.py (color-seg + depth->3D) publishes
+  /oakd/nn/spatial_detections. Root cause of empty camera view: spawn (0,0) faces a wall at x=0.24
+  (map +X edge); fixed via SPAWN_YAW=pi + cube on -X + SPAWN_NO_DOCK. Gate PASS (red_cube, finite 3D).
+  Base contract still green. Commit b9ccad1. Detector left running (bg). Starting Phase 3.

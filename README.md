@@ -66,6 +66,32 @@ script steps with `render=True`; headless is fine, but don't disable rendering).
 - The robot starts nosed up to the dock, so a fresh frame mostly sees the dock plate;
   undock (or place an object in front) for a clear forward view.
 
+## Spatial detection (Phase 2 — matches depthai_ros_driver on the real TB4)
+`scripts/oakd_spatial_detection.py` publishes `/oakd/nn/spatial_detections`
+(`depthai_ros_msgs/msg/SpatialDetectionArray` — the exact hardware topic/type) by
+running a 2D detector on the RGB image and fusing it with the stereo depth to lift
+each detection to a 3D position in `oakd_rgb_camera_optical_frame` — the same path
+the OAK-D runs on-device. The sim's "2D detector" is a color segmentation for a
+known red cube (model-free, so it runs headless with no weights download); the
+depth-fusion + message contract are identical to hardware.
+- The type lives in a vendored **subset** package `ros2_ws/src/depthai_ros_msgs`
+  (authentic upstream field layout from luxonis/depthai-ros humble), built into a
+  project-local colcon ws: `source ros2_ws/install/setup.bash`.
+- The detection scenario needs a clear camera view. The committed default spawn
+  `(0,0)`+yaw0 faces a near wall on +X, so reproduce with the env toggles:
+
+      # terminal 1 — sim facing the open room, dock omitted, headless
+      SPAWN_NO_DOCK=1 SPAWN_YAW=3.14159 SPAWN_HEADLESS=1 isaac-py scripts/spawn_turtlebot4.py
+      # terminal 2 — detector
+      source ~/isaac_tb4/ros2_ws/install/setup.bash ; isaac-ros
+      python3 ~/isaac_tb4/scripts/oakd_spatial_detection.py
+      # terminal 3 — gate (asserts labeled detection + finite 3D pose)
+      source ~/isaac_tb4/ros2_ws/install/setup.bash ; isaac-ros
+      python3 ~/isaac_tb4/verify/check_spatial_detection.py
+
+- Tune the target (`KNOWN_OBJ_*`) and `ENABLE_OAKD`/`ADD_KNOWN_OBJECT` at the top
+  of `scripts/spawn_turtlebot4.py`. `OAKD_DEBUG=1` prints the camera's world pose.
+
 ## Realistic driving (matches the real TurtleBot4)
 - **Wheels are velocity-driven.** The URDF import left the wheels in *position* drive
   (stiffness 625, damping 0) so /cmd_vel barely moved the robot. They're now velocity

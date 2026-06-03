@@ -44,6 +44,31 @@ LIDAR_MOUNT_Z = 0.13   # meters above rplidar_link (-> ~0.19 m above base_link)
 SCAN_MIN_RANGE = 0.32          # meters; drop closer returns (robot's own structure)
 RAW_SCAN_TOPIC = "/scan_raw"   # internal: RTX lidar -> scan filter -> /scan
 
+# ── OAK-D camera (Phase 1) ───────────────────────────────────────────────────
+# A single RTX camera on the OAK-D mount publishes the same topic/frame/type set
+# the real depthai_ros_driver exposes on the TurtleBot4, so sim code ports 1:1:
+#   /oakd/rgb/image_raw      sensor_msgs/Image       (rgb8)
+#   /oakd/rgb/camera_info    sensor_msgs/CameraInfo  (intrinsics, optical frame)
+#   /oakd/stereo/image_raw   sensor_msgs/Image       (32FC1 depth)
+#   /oakd/points             sensor_msgs/PointCloud2 (depth point cloud)
+# Like the RTX lidar, the camera only publishes WHILE RENDERING (render=True).
+ENABLE_OAKD = True
+OAKD_RGB_TOPIC    = "/oakd/rgb/image_raw"
+OAKD_INFO_TOPIC   = "/oakd/rgb/camera_info"
+OAKD_DEPTH_TOPIC  = "/oakd/stereo/image_raw"
+OAKD_POINTS_TOPIC = "/oakd/points"
+# depthai publishes rgb + aligned depth/points in the RGB optical frame; match it.
+OAKD_FRAME = "oakd_rgb_camera_optical_frame"
+# Resolution is reduced from the real 1280x720 to keep the headless RTX render
+# light (so /scan stays at rate); intrinsics scale with it, parity is in the
+# topic/frame/type names + message types, not the pixel count. 16:9 like the OAK-D.
+OAKD_W, OAKD_H = 640, 360
+# OAK-D mount on base_link: ~front-top of the tower, looking forward (+X).
+OAKD_MOUNT_XYZ = (0.12, 0.0, 0.16)   # meters in base_link
+# Optics -> ~69deg horizontal FOV (OAK-D RGB-ish): HFOV = 2*atan(hAperture/2/focal).
+OAKD_FOCAL      = 15.24
+OAKD_H_APERTURE = 20.955
+
 # ── spawn pose ─────────────────────────────────────────────────────────────
 # Where the robot appears. Set SPAWN_XY to a (x, y) tuple in map/world meters to
 # pin it; leave it None to auto-pick the most open free cell of the occupancy map.
@@ -221,8 +246,38 @@ def add_rtx_lidar():
     return rp.path
 
 
-def build_action_graph(stage, render_product_path):
-    """Build the ROS 2 bridge OmniGraph (clock, cmd_vel->drive, odom, tf, scan)."""
+def add_oakd_camera(stage):
+    """Create the OAK-D RTX camera on base_link; return its render-product path.
+
+    USD cameras look down local -Z with +Y up; the explicit transform below points
+    the camera along the robot's +X (forward) with +Z up, mounted at OAKD_MOUNT_XYZ.
+    The matrix rows are the camera's local x/y/z axes expressed in base_link
+    (det = +1, a proper rotation): local-x -> -Y, local-y -> +Z, local-z -> -X.
+    """
+    cam_path = f"{ART_ROOT}/oakd_rgb_camera"
+    cam = UsdGeom.Camera.Define(stage, cam_path)
+    cam.CreateFocalLengthAttr().Set(OAKD_FOCAL)
+    cam.CreateHorizontalApertureAttr().Set(OAKD_H_APERTURE)
+    cam.CreateVerticalApertureAttr().Set(OAKD_H_APERTURE * OAKD_H / OAKD_W)
+    cam.CreateClippingRangeAttr().Set(Gf.Vec2f(0.05, 20.0))
+
+    tx, ty, tz = OAKD_MOUNT_XYZ
+    xf = UsdGeom.Xformable(cam)
+    xf.ClearXformOpOrder()
+    xf.AddTransformOp().Set(Gf.Matrix4d(
+        0.0, -1.0, 0.0, 0.0,
+        0.0,  0.0, 1.0, 0.0,
+       -1.0,  0.0, 0.0, 0.0,
+         tx,   ty,  tz, 1.0,
+    ))
+
+    rp = rep.create.render_product(cam_path, [OAKD_W, OAKD_H], name="TB4_OakdRP")
+    print(f"[spawn] OAK-D camera render product = {rp.path} ({OAKD_W}x{OAKD_H})")
+    return rp.path
+
+
+def build_action_graph(stage, render_product_path, oakd_rp_path=None):
+    """Build the ROS 2 bridge OmniGraph (clock, cmd_vel->drive, odom, tf, scan, oakd)."""
     keys = og.Controller.Keys
     graph_path = "/World/ActionGraph"
 
@@ -243,6 +298,14 @@ def build_action_graph(stage, render_product_path):
     ]
     if ENABLE_LIDAR:
         nodes.append(("PubScan", "isaacsim.ros2.bridge.ROS2RtxLidarHelper"))
+    oakd = ENABLE_OAKD and oakd_rp_path is not None
+    if oakd:
+        nodes += [
+            ("OakRgb",   "isaacsim.ros2.bridge.ROS2CameraHelper"),
+            ("OakDepth", "isaacsim.ros2.bridge.ROS2CameraHelper"),
+            ("OakPcl",   "isaacsim.ros2.bridge.ROS2CameraHelper"),
+            ("OakInfo",  "isaacsim.ros2.bridge.ROS2CameraInfoHelper"),
+        ]
 
     values = [
         ("PubClock.inputs:topicName", "/clock"),
@@ -267,6 +330,24 @@ def build_action_graph(stage, render_product_path):
             ("PubScan.inputs:frameId", "rplidar_link"),
             ("PubScan.inputs:type", "laser_scan"),
             ("PubScan.inputs:renderProductPath", render_product_path),
+        ]
+    if oakd:
+        values += [
+            ("OakRgb.inputs:topicName", OAKD_RGB_TOPIC),
+            ("OakRgb.inputs:frameId", OAKD_FRAME),
+            ("OakRgb.inputs:type", "rgb"),
+            ("OakRgb.inputs:renderProductPath", oakd_rp_path),
+            ("OakDepth.inputs:topicName", OAKD_DEPTH_TOPIC),
+            ("OakDepth.inputs:frameId", OAKD_FRAME),
+            ("OakDepth.inputs:type", "depth"),
+            ("OakDepth.inputs:renderProductPath", oakd_rp_path),
+            ("OakPcl.inputs:topicName", OAKD_POINTS_TOPIC),
+            ("OakPcl.inputs:frameId", OAKD_FRAME),
+            ("OakPcl.inputs:type", "depth_pcl"),
+            ("OakPcl.inputs:renderProductPath", oakd_rp_path),
+            ("OakInfo.inputs:topicName", OAKD_INFO_TOPIC),
+            ("OakInfo.inputs:frameId", OAKD_FRAME),
+            ("OakInfo.inputs:renderProductPath", oakd_rp_path),
         ]
 
     connect = [
@@ -304,6 +385,12 @@ def build_action_graph(stage, render_product_path):
             ("OnTick.outputs:tick", "PubScan.inputs:execIn"),
             ("Context.outputs:context", "PubScan.inputs:context"),
         ]
+    if oakd:
+        for n in ("OakRgb", "OakDepth", "OakPcl", "OakInfo"):
+            connect += [
+                ("OnTick.outputs:tick", f"{n}.inputs:execIn"),
+                ("Context.outputs:context", f"{n}.inputs:context"),
+            ]
 
     og.Controller.edit(
         {"graph_path": graph_path, "evaluator_name": "execution"},
@@ -405,7 +492,8 @@ if ADD_DOCK:
     add_dock(stage, spawn_x, spawn_y)
 add_dome_light(stage)
 render_product_path = add_rtx_lidar() if ENABLE_LIDAR else None
-build_action_graph(stage, render_product_path)
+oakd_rp_path = add_oakd_camera(stage) if ENABLE_OAKD else None
+build_action_graph(stage, render_product_path, oakd_rp_path)
 
 # ── run ─────────────────────────────────────────────────────────────────────
 world.reset()

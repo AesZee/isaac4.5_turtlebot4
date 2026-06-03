@@ -1,0 +1,5 @@
+frame_id: oakd_rgb_camera_optical_frame
+resolution: 640x360
+distortion_model: plumb_bob
+K (fx,0,cx, 0,fy,cy, 0,0,1): [465.4545401587682, 0.0, 320.0, 0.0, 465.4545401587682, 180.0, 0.0, 0.0, 1.0]
+D: [0.0, 0.0, 0.0, 0.0, 0.0]

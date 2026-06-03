@@ -43,6 +43,28 @@ Use TWO terminals.
 | /tf                | pub |        | odom->base_link + the robot link tree (incl. base_link->rplidar_link) |
 | /scan_raw          | -   |        | internal: raw RTX lidar -> scan filter (don't consume this) |
 | /scan              | pub |        | filtered lidar (rplidar_link), 360 deg, returns >=0.32 m kept |
+| /oakd/rgb/image_raw   | pub | render-gated | OAK-D RGB (rgb8), frame oakd_rgb_camera_optical_frame |
+| /oakd/rgb/camera_info | pub | render-gated | OAK-D RGB intrinsics (matches /oakd/rgb/image_raw) |
+| /oakd/stereo/image_raw| pub | render-gated | OAK-D depth (32FC1, metres), aligned to the RGB optical frame |
+| /oakd/points          | pub | render-gated | OAK-D depth point cloud (sensor_msgs/PointCloud2) |
+
+## OAK-D camera (Phase 1 — matches depthai_ros_driver on the real TB4)
+A single RTX camera on the OAK-D mount (base_link, looking +X) publishes the same
+topic/frame/type set the real `depthai_ros_driver` exposes, so perception code ports
+1:1 to hardware. Like the RTX lidar, it only publishes **while rendering** (the spawn
+script steps with `render=True`; headless is fine, but don't disable rendering).
+- Topics/frame as in the table above; all in `oakd_rgb_camera_optical_frame`.
+- Resolution is **640x360** (reduced from the real 1280x720 to keep the headless RTX
+  render light so `/scan` stays at rate); intrinsics scale with it. Tune `OAKD_W/H`,
+  `OAKD_MOUNT_XYZ`, and the optics (`OAKD_FOCAL`/`OAKD_H_APERTURE`) at the top of
+  `scripts/spawn_turtlebot4.py`. Toggle the whole camera with `ENABLE_OAKD`.
+- Save sample frames for review (RGB + depth PNG + raw .npy + camera_info) — run in an
+  `isaac-ros` shell with the sim up:
+
+      python3 ~/isaac_tb4/verify/save_oakd_frames.py     # -> verify/artifacts/
+
+- The robot starts nosed up to the dock, so a fresh frame mostly sees the dock plate;
+  undock (or place an object in front) for a clear forward view.
 
 ## Realistic driving (matches the real TurtleBot4)
 - **Wheels are velocity-driven.** The URDF import left the wheels in *position* drive

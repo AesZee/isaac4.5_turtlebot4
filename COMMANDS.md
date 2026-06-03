@@ -20,6 +20,15 @@ ros2 topic list      # -> /clock /cmd_vel /odom /tf /scan /dock_status ...
 ros2 topic echo /odom
 ```
 
+### OAK-D camera (Phase 1)
+```bash
+ros2 topic echo --once /oakd/rgb/camera_info        # frame + intrinsics
+ros2 topic hz /oakd/points                          # depth point cloud rate
+python3 ~/isaac_tb4/verify/save_oakd_frames.py      # save RGB+depth frames -> verify/artifacts/
+```
+Topics: `/oakd/rgb/image_raw` `/oakd/rgb/camera_info` `/oakd/stereo/image_raw` `/oakd/points`
+(frame `oakd_rgb_camera_optical_frame`). Render-gated like `/scan`.
+
 ### Drive (teleop)
 ```bash
 isaac-teleop         # keyboard teleop on /cmd_vel  (i=fwd, ,=back, j/l=turn, k=stop, q/z=speed)

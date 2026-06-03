@@ -36,9 +36,12 @@ done
 
 for t in "${HZ_TOPICS[@]}"; do
   [ -z "$t" ] && continue
-  if ! timeout "$HZ_TIMEOUT" ros2 topic hz "$t" 2>/dev/null | grep -q "average rate"; then
-    fail "$t not publishing (no rate within ${HZ_TIMEOUT}s)"
-  fi
+  # NB: `grep -q`/`-m1` exits on first match and SIGPIPE-kills `ros2 topic hz`.
+  # Under `set -o pipefail` that upstream 120/141 becomes the pipeline status, so
+  # `if ! ... | grep -q` wrongly fails a HEALTHY topic. Capture the line in a
+  # subshell instead and test it: empty (silent topic) still fails, as intended.
+  rate="$(timeout "$HZ_TIMEOUT" ros2 topic hz "$t" 2>/dev/null | grep -m1 'average rate')"
+  [ -n "$rate" ] || fail "$t not publishing (no rate within ${HZ_TIMEOUT}s)"
 done
 
 echo "PASS: required topics present and ${HZ_TOPICS[*]} publishing."

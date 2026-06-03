@@ -1,0 +1,7 @@
+topic: /oakd/nn/spatial_detections
+frame_id: oakd_rgb_camera_optical_frame
+num_detections: 1
+class_id: red_cube
+score: 0.40821180555555553
+bbox: center=(324.0,194.0) size=(218.0x218.0)
+position_m: x=0.0055 y=0.0193 z=0.6410

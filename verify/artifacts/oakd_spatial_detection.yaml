@@ -1,0 +1,24 @@
+header:
+  stamp:
+    sec: 193
+    nanosec: 733343437
+  frame_id: oakd_rgb_camera_optical_frame
+detections:
+- results:
+  - class_id: red_cube
+    score: 0.40813802083333334
+  bbox:
+    center:
+      position:
+        x: 324.0
+        y: 194.0
+      theta: 0.0
+    size_x: 218.0
+    size_y: 218.0
+  position:
+    x: 0.005508250386726477
+    y: 0.01927887635354267
+    z: 0.6409600377082825
+  is_tracking: false
+  tracking_id: ''
+---

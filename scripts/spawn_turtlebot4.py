@@ -73,15 +73,37 @@ OAKD_H_APERTURE = 20.955
 # Where the robot appears. Set SPAWN_XY to a (x, y) tuple in map/world meters to
 # pin it; leave it None to auto-pick the most open free cell of the occupancy map.
 SPAWN_XY  = (0.0, 0.0)     # e.g. (-0.69, 0.32)
-SPAWN_YAW = 0.0      # heading, radians (0 = +X, pi/2 = +Y)
+# Heading, radians (0 = +X, pi/2 = +Y). Env-overridable: the default spawn (0,0)
+# faces a near wall on +X, so the Phase-2 detection scenario sets SPAWN_YAW=3.14159
+# (face the open room on -X) where the known object sits in the camera's clear view.
+SPAWN_YAW = float(os.environ.get("SPAWN_YAW", "0.0"))
 SPAWN_Z   = 0.06     # height above the floor, meters
 
 # ── dock ───────────────────────────────────────────────────────────────────
 # A visual charging dock placed at the spawn pose, so the robot starts "docked".
 # Behavioral dock/undock is driven by scripts/dock_controller.py over /cmd_vel
 # (the dock returns the robot to the odom origin). Visual only — no collision.
-ADD_DOCK  = True
+# Default: robot starts docked (verified behavior). Set SPAWN_NO_DOCK=1 to omit the
+# visual dock — used by the Phase-2 detection scenario so the forward camera has a
+# clear view of the known object instead of staring at the dock plate it noses up to.
+ADD_DOCK  = os.environ.get("SPAWN_NO_DOCK", "0") != "1"
 DOCK_PRIM = "/World/Dock"
+
+# ── known object (Phase 2: spatial detection target) ────────────────────────
+# A vivid red cube in the camera's forward FOV, used as the known object the
+# spatial-detection node finds (color-segment -> 2D bbox -> depth -> 3D pose).
+# Placed high/far enough to clear the dock back plate (top z=0.14) that the robot
+# noses up to. Visual only (no collision), so it never interferes with driving.
+# Pose is in WORLD meters (robot spawns at SPAWN_XY/yaw, so +X world = forward).
+ADD_KNOWN_OBJECT  = True
+KNOWN_OBJ_PRIM    = "/World/KnownObject"
+# In free space on -X (the open room), ~0.8 m ahead of the camera when the robot
+# faces -X (SPAWN_YAW=pi). Spans z 0..0.3 so it straddles the camera optical axis
+# (~0.22 m). Map free space here is clear to >=1.5 m.
+KNOWN_OBJ_XYZ     = (-0.90, 0.0, 0.15)       # world meters
+KNOWN_OBJ_SIZE    = (0.30, 0.30, 0.30)       # meters
+KNOWN_OBJ_COLOR   = (0.90, 0.05, 0.05)       # saturated red (HSV-segmentable)
+KNOWN_OBJ_LABEL   = "red_cube"
 
 # ── initial viewport camera (GUI only) ─────────────────────────────────────
 # Startup pose for the perspective viewport camera, matching the Translate/Rotate
@@ -196,6 +218,28 @@ def set_wheel_velocity_drive(stage):
         drive.CreateDampingAttr().Set(WHEEL_DRIVE_DAMPING)
         drive.CreateTargetVelocityAttr().Set(0.0)
     print(f"[spawn] wheel velocity drive set (damping={WHEEL_DRIVE_DAMPING})")
+
+
+def add_known_object(stage):
+    """Add a vivid red cube (visual only) as the Phase-2 detection target."""
+    cx, cy, cz = KNOWN_OBJ_XYZ
+    cube = UsdGeom.Cube.Define(stage, KNOWN_OBJ_PRIM)
+    cube.GetSizeAttr().Set(1.0)                       # unit cube -> scale = meters
+    cube.CreateDisplayColorAttr([Gf.Vec3f(*KNOWN_OBJ_COLOR)])
+    xf = UsdGeom.Xformable(cube)
+    xf.ClearXformOpOrder()
+    xf.AddTranslateOp().Set(Gf.Vec3d(cx, cy, cz))
+    xf.AddScaleOp().Set(Gf.Vec3f(*KNOWN_OBJ_SIZE))
+    # Semantic label for parity with a real labeled detector (optional consumer).
+    try:
+        from pxr import Semantics
+        prim = cube.GetPrim()
+        sem = Semantics.SemanticsAPI.Apply(prim, "Semantics")
+        sem.CreateSemanticTypeAttr().Set("class")
+        sem.CreateSemanticDataAttr().Set(KNOWN_OBJ_LABEL)
+    except Exception as e:
+        print(f"[spawn] (known object semantic label skipped: {e})")
+    print(f"[spawn] known object '{KNOWN_OBJ_LABEL}' at {KNOWN_OBJ_XYZ}")
 
 
 def add_dome_light(stage):
@@ -490,6 +534,8 @@ place_robot(stage, spawn_x, spawn_y)
 set_wheel_velocity_drive(stage)
 if ADD_DOCK:
     add_dock(stage, spawn_x, spawn_y)
+if ADD_KNOWN_OBJECT:
+    add_known_object(stage)
 add_dome_light(stage)
 render_product_path = add_rtx_lidar() if ENABLE_LIDAR else None
 oakd_rp_path = add_oakd_camera(stage) if ENABLE_OAKD else None
@@ -497,6 +543,18 @@ build_action_graph(stage, render_product_path, oakd_rp_path)
 
 # ── run ─────────────────────────────────────────────────────────────────────
 world.reset()
+
+if os.environ.get("OAKD_DEBUG") == "1" and ENABLE_OAKD:
+    _cache = UsdGeom.XformCache(Usd.TimeCode.Default())
+    _m = _cache.GetLocalToWorldTransform(stage.GetPrimAtPath(f"{ART_ROOT}/oakd_rgb_camera"))
+    _t = _m.ExtractTranslation()
+    _fwd = _m.TransformDir(Gf.Vec3d(0.0, 0.0, -1.0))
+    _up = _m.TransformDir(Gf.Vec3d(0.0, 1.0, 0.0))
+    _bl = _cache.GetLocalToWorldTransform(stage.GetPrimAtPath(ART_ROOT)).ExtractTranslation()
+    print(f"[oakd-debug] base_link world t={tuple(round(v,3) for v in _bl)}")
+    print(f"[oakd-debug] cam world t={tuple(round(v,3) for v in _t)} "
+          f"forward={tuple(round(v,3) for v in _fwd)} up={tuple(round(v,3) for v in _up)}")
+
 omni.timeline.get_timeline_interface().play()
 
 # Small in-process ROS nodes (share one rclpy context; single shutdown at the end).

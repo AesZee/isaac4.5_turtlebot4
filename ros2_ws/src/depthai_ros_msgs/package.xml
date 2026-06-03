@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>depthai_ros_msgs</name>
+  <version>2.10.0</version>
+  <description>
+    depthai_ros_msgs interface package — vendored SUBSET (SpatialDetection,
+    SpatialDetectionArray) with the authentic upstream field layout, so the
+    Isaac sim publishes the exact type the real OAK-D / depthai_ros_driver uses
+    on the TurtleBot4 (/oakd/nn/spatial_detections). Sourced from luxonis/depthai-ros
+    (humble). Not the full upstream package — only the messages this project needs.
+  </description>
+  <maintainer email="thjune0326@gmail.com">aes</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>rosidl_default_generators</buildtool_depend>
+
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>vision_msgs</depend>
+
+  <exec_depend>rosidl_default_runtime</exec_depend>
+  <member_of_group>rosidl_interface_packages</member_of_group>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

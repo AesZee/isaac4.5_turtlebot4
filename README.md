@@ -80,8 +80,8 @@ depth-fusion + message contract are identical to hardware.
 - The detection scenario needs a clear camera view. The committed default spawn
   `(0,0)`+yaw0 faces a near wall on +X, so reproduce with the env toggles:
 
-      # terminal 1 — sim facing the open room, dock omitted, headless
-      SPAWN_NO_DOCK=1 SPAWN_YAW=3.14159 SPAWN_HEADLESS=1 isaac-py scripts/spawn_turtlebot4.py
+      # terminal 1 — sim facing the open room, dock omitted, cube spawned, headless
+      SPAWN_KNOWN_OBJECT=1 SPAWN_NO_DOCK=1 SPAWN_YAW=3.14159 SPAWN_HEADLESS=1 isaac-py scripts/spawn_turtlebot4.py
       # terminal 2 — detector
       source ~/isaac_tb4/ros2_ws/install/setup.bash ; isaac-ros
       python3 ~/isaac_tb4/scripts/oakd_spatial_detection.py

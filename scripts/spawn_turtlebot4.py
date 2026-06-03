@@ -95,7 +95,10 @@ DOCK_PRIM = "/World/Dock"
 # Placed high/far enough to clear the dock back plate (top z=0.14) that the robot
 # noses up to. Visual only (no collision), so it never interferes with driving.
 # Pose is in WORLD meters (robot spawns at SPAWN_XY/yaw, so +X world = forward).
-ADD_KNOWN_OBJECT  = True
+# The cube is a Phase-2 TEST FIXTURE, not robot hardware — default OFF so it never
+# pollutes the verified scene or the SLAM map. The detection scenario sets
+# SPAWN_KNOWN_OBJECT=1 (alongside SPAWN_NO_DOCK=1 + SPAWN_YAW=pi).
+ADD_KNOWN_OBJECT  = os.environ.get("SPAWN_KNOWN_OBJECT", "0") == "1"
 KNOWN_OBJ_PRIM    = "/World/KnownObject"
 # In free space on -X (the open room), ~0.8 m ahead of the camera when the robot
 # faces -X (SPAWN_YAW=pi). Spans z 0..0.3 so it straddles the camera optical axis

@@ -32,7 +32,7 @@ Topics: `/oakd/rgb/image_raw` `/oakd/rgb/camera_info` `/oakd/stereo/image_raw` `
 ### Spatial detection (Phase 2)
 ```bash
 # sim facing the open room with the known object in view (dock omitted):
-SPAWN_NO_DOCK=1 SPAWN_YAW=3.14159 SPAWN_HEADLESS=1 isaac-py ~/isaac_tb4/scripts/spawn_turtlebot4.py
+SPAWN_KNOWN_OBJECT=1 SPAWN_NO_DOCK=1 SPAWN_YAW=3.14159 SPAWN_HEADLESS=1 isaac-py ~/isaac_tb4/scripts/spawn_turtlebot4.py
 # detector + gate (each needs the project ws for depthai_ros_msgs):
 source ~/isaac_tb4/ros2_ws/install/setup.bash ; isaac-ros
 python3 ~/isaac_tb4/scripts/oakd_spatial_detection.py     # publishes /oakd/nn/spatial_detections

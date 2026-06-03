@@ -36,8 +36,8 @@ saved .pgm/.yaml exist + are non-empty. Do NOT do RViz/visual nav sign-off (huma
 
 ## Phase-2 reproduction (for the human)
 Detection scenario needs a clear camera view; the committed default spawn (0,0)+yaw0 faces a near
-wall on +X. Reproduce with: terminal 1 `SPAWN_NO_DOCK=1 SPAWN_YAW=3.14159 SPAWN_HEADLESS=1 isaac-py
-scripts/spawn_turtlebot4.py`; terminal 2 `source ros2_ws/install/setup.bash; isaac-ros; python3
+wall on +X. Reproduce with: terminal 1 `SPAWN_KNOWN_OBJECT=1 SPAWN_NO_DOCK=1 SPAWN_YAW=3.14159 SPAWN_HEADLESS=1
+isaac-py scripts/spawn_turtlebot4.py`; terminal 2 `source ros2_ws/install/setup.bash; isaac-ros; python3
 scripts/oakd_spatial_detection.py`; terminal 3 same source+isaac-ros then
 `python3 verify/check_spatial_detection.py`.
 

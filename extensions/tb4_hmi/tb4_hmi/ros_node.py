@@ -51,13 +51,16 @@ class Tb4HmiRos:
             "action": "idle",         # short human string for the panel
         }
 
-        # Join the existing rclpy context if one is already up; otherwise own it.
-        self._owns_rclpy = False
-        if not rclpy.ok():
-            rclpy.init(args=None)
-            self._owns_rclpy = True
+        # Own a PRIVATE rclpy context so we are a separate DDS participant from the
+        # spawn process's in-process cmd_vel watchdog node. Sharing the global context
+        # would make the watchdog's /cmd_vel subscription ignore our /cmd_vel as a
+        # local (same-participant) publication, so jog + dock_controller-driven moves
+        # would silently do nothing. A private context behaves like a separate process
+        # (which is exactly why isaac-teleop / isaac-dockd work).
+        self._context = rclpy.Context()
+        rclpy.init(context=self._context)
 
-        self._node = Node(self.NODE_NAME)
+        self._node = Node(self.NODE_NAME, context=self._context)
         self._cmd_pub = self._node.create_publisher(Twist, "/cmd_vel", 10)
         self._ring_pub = self._node.create_publisher(LightringLeds, "/cmd_lightring", 10)
         self._node.create_subscription(DockStatus, "/dock_status", self._on_dock, 10)
@@ -66,7 +69,7 @@ class Tb4HmiRos:
         self._dock_cli = ActionClient(self._node, Dock, "dock")
         self._undock_cli = ActionClient(self._node, Undock, "undock")
 
-        self._executor = SingleThreadedExecutor()
+        self._executor = SingleThreadedExecutor(context=self._context)
         self._executor.add_node(self._node)
         self._spin_thread = threading.Thread(
             target=self._executor.spin, name="tb4_hmi_ros_spin", daemon=True)
@@ -113,7 +116,7 @@ class Tb4HmiRos:
     def _send_action(self, client, goal, label):
         # non-blocking readiness check; dock_controller (isaac-dockd) must be up
         if not client.server_is_ready():
-            client.wait_for_server(timeout_sec=0.2)
+            client.wait_for_server(timeout_sec=1.0)
         if not client.server_is_ready():
             self._set_action(f"{label}: no server — start isaac-dockd")
             return
@@ -159,12 +162,15 @@ class Tb4HmiRos:
             self._executor.shutdown()
         except Exception:  # noqa: BLE001
             pass
+        # let the spin thread unwind before tearing down the node + context
+        if self._spin_thread.is_alive():
+            self._spin_thread.join(timeout=1.0)
         try:
             self._node.destroy_node()
         except Exception:  # noqa: BLE001
             pass
-        if self._owns_rclpy and rclpy.ok():
+        if rclpy.ok(context=self._context):
             try:
-                rclpy.shutdown()
+                rclpy.shutdown(context=self._context)
             except Exception:  # noqa: BLE001
                 pass

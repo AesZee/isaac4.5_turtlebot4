@@ -33,7 +33,23 @@ Then drive it like the real robot:
     ros2 topic echo /dock_status
 """
 import math
+import os
 import time
+
+# ── pin this process to the SIM DDS (domain isolation) ───────────────────────
+# The HMI panel (inside the Isaac process) lives on the sim's local domain set by
+# run_isaacsim.sh: domain 0, localhost-only, NO discovery server. This machine is
+# ALSO configured for the real robot (domain 1 + discovery server) via ~/.bashrc,
+# so a plain `python3 dock_controller.py` (i.e. `isaac-dockd` without `isaac-ros`
+# first) would join the ROBOT's domain and be invisible to the panel — the action
+# servers/telemetry never reach it and Dock/Undock look "dead". Force the sim
+# domain here so isaac-dockd always meets the panel no matter which shell starts
+# it. This only sets THIS process's env; it never touches the real-robot config.
+os.environ.pop("ROS_DISCOVERY_SERVER", None)
+os.environ.pop("ROS_SUPER_CLIENT", None)
+os.environ["ROS_DOMAIN_ID"] = os.environ.get("ISAAC_ROS_DOMAIN_ID", "0")
+os.environ["ROS_LOCALHOST_ONLY"] = "1"
+os.environ.setdefault("RMW_IMPLEMENTATION", "rmw_fastrtps_cpp")
 
 import rclpy
 from rclpy.action import ActionServer, CancelResponse

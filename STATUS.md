@@ -25,14 +25,12 @@ table + Next action + Log after every completed or failed step. Keep entries sho
 | 1 — OAK-D RGB + depth + points | GREEN | PASS | 4 /oakd topics @rate; camera_info frame+K ok; frames saved; commit 380ead2 |
 | 2 — detection + spatial 3D | GREEN | PASS | red_cube @ finite 3D (0.006,0.019,0.641)m; vendored depthai_ros_msgs; commit b9ccad1 |
 | 3 — lidar/SLAM regression guard | GREEN | PASS | base+/scan intact; map maps/A-1_phase3_map.* (60/10/30); commit 9410f41 |
-| 4 — HMI extension | **BUILT — awaiting GUI sign-off** | — | code complete + offline-validated; GUI verify is the human's (TESTING.md Phase 4) |
+| 4 — HMI extension | GREEN | PASS | human GUI sign-off: panel/ring/battery/dock/teleop/e-stop all confirmed in Isaac Sim window |
 
 ## Next action
-Phases 1–3 GREEN. **Phase 4 (HMI) BUILT** on branch feat/phase4-hmi (attended, with the human running
-the GUI). Code complete + offline-validated (py_compile + Isaac-Python import of rclpy/actions/
-LightringLeds). GUI behavior NOT verifiable headless — awaiting human sign-off per TESTING.md Phase 4:
-run `isaac-hmi` + `isaac-dockd`, confirm panel/ring/battery/dock/teleop/e-stop, then `./verify/
-check_topics.sh` for regression. Not yet committed.
+ALL PHASES 1–4 GREEN. Phase 4 (HMI) signed off by the human in the Isaac Sim GUI: panel docks,
+ring tracks dock/charge state, battery % updates, Dock/Undock + teleop nudges drive, E-STOP halts.
+Committed on branch feat/phase4-hmi. Nothing pending — ready to merge to master when desired.
 
 ## Suggested aliases for the human (add to ~/.bashrc; not added unattended)
 - isaac-oakd-frames : python3 ~/isaac_tb4/verify/save_oakd_frames.py
@@ -84,3 +82,6 @@ proceeding would require touching the real-robot config or a second Isaac instan
   extensions/ to the ext search path + enable_extension("tb4_hmi"); alias isaac-hmi added to ~/.bashrc.
   Docs: README + COMMANDS + TESTING (Phase 4) + extensions/tb4_hmi/docs/README.md. Offline-validated
   (py_compile all; isaac-py import check; leds[6] assignment). GUI sign-off pending (human).
+- phase4 GREEN: human verified isaac-hmi in the Isaac Sim GUI — panel docks, light ring tracks
+  dock/charge state, battery % updates, Dock/Undock + teleop nudges drive the robot, E-STOP halts.
+  README + STATUS updated to verified-working; committed on feat/phase4-hmi. ALL PHASES 1-4 GREEN.

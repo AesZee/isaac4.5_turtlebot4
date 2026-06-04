@@ -113,7 +113,7 @@ keyboard via SLAM + a scripted teleop routine (run the sim in the DEFAULT config
 A sample map built this way is at `maps/A-1_phase3_map.pgm/.yaml` (PNG render in
 `verify/artifacts/`). RViz / visual nav sign-off is left to a human.
 
-## HMI panel (Phase 4 — Isaac Sim GUI extension)
+## HMI panel (Phase 4 — Isaac Sim GUI extension) ✅ verified working
 `extensions/tb4_hmi/` is a dockable Isaac Sim extension that mimics the Create 3 HMI:
 a 6-segment **light ring**, **battery %**, **Dock/Undock** buttons, **teleop** nudges,
 and an **E-STOP**. It hosts its own `rclpy` node inside the Isaac process and talks to the
@@ -135,7 +135,8 @@ New robot interfaces this adds (real-TB4 parity):
 | /cmd_lightring | irobot_create_msgs/msg/LightringLeds | pub (panel) | 6-LED ring command, mirrors the panel ring |
 
 Light-ring state→color mapping and threading notes: `extensions/tb4_hmi/docs/README.md`.
-The panel and ring are GUI — verify them in the Isaac Sim window (see `TESTING.md`).
+Verified in the Isaac Sim GUI: panel docks, the ring tracks dock/charge state, battery %
+updates, Dock/Undock + teleop nudges drive the robot, and E-STOP halts it (see `TESTING.md`).
 
 ## Realistic driving (matches the real TurtleBot4)
 - **Wheels are velocity-driven.** The URDF import left the wheels in *position* drive
@@ -146,7 +147,11 @@ The panel and ring are GUI — verify them in the Isaac Sim window (see `TESTING
 - **cmd_vel watchdog:** like the real Create3 base, the robot stops if no /cmd_vel
   arrives within CMD_VEL_TIMEOUT (0.5 s). So a single teleop key *tap* drives briefly
   then stops; *holding* a key streams commands and keeps it moving. Tune CMD_VEL_TIMEOUT
-  at the top of scripts/spawn_turtlebot4.py for longer coasting per tap.
+  at the top of scripts/cmd_vel_watchdog.py for longer coasting per tap. The watchdog runs
+  as a **separate process** (`scripts/cmd_vel_watchdog.py`, auto-launched by the spawn) — it
+  relays /cmd_vel → /cmd_vel_watchdog → diff drive. It must be out-of-process: an rclpy node
+  inside the Isaac process can't receive /cmd_vel from other processes (teleop / dock /
+  HMI panel), so an in-process watchdog left the robot undriveable.
 
 ## Lidar / /scan (so it matches the room)
 Two things had to be fixed for the laser to be usable by SLAM/Nav2/RViz — both live

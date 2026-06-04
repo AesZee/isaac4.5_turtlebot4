@@ -12,7 +12,8 @@ Then in another terminal:  isaac-ros ; ros2 topic list ; isaac-teleop
 """
 import math
 import os
-import time
+import subprocess
+import sys
 
 import numpy as np
 import yaml
@@ -470,40 +471,12 @@ def build_action_graph(stage, render_product_path, oakd_rp_path=None):
     print("[spawn] action graph built")
 
 
-class CmdVelWatchdog:
-    """Relay /cmd_vel -> WATCHDOG_TOPIC, then publish one zero Twist once no
-    command has arrived for CMD_VEL_TIMEOUT seconds. Holding a teleop key streams
-    messages that keep resetting the timer; a single tap drives briefly and stops.
-    """
-
-    def __init__(self):
-        import rclpy
-        from geometry_msgs.msg import Twist
-        if not rclpy.ok():
-            rclpy.init()
-        self._rclpy = rclpy
-        self._Twist = Twist
-        self.node = rclpy.create_node("tb4_cmd_vel_watchdog")
-        self._relay = self.node.create_publisher(Twist, WATCHDOG_TOPIC, 10)
-        self.node.create_subscription(Twist, "/cmd_vel", self._on_cmd, 10)
-        self._last_t = None
-        self._stopped = True
-
-    def _on_cmd(self, msg):
-        self._relay.publish(msg)            # forward the command immediately
-        self._last_t = time.monotonic()
-        self._stopped = False
-
-    def spin(self):
-        """Pump ROS callbacks once and stop the wheels if the command is stale."""
-        self._rclpy.spin_once(self.node, timeout_sec=0.0)
-        if (not self._stopped and self._last_t is not None
-                and time.monotonic() - self._last_t > CMD_VEL_TIMEOUT):
-            self._relay.publish(self._Twist())
-            self._stopped = True
-
-    def close(self):
-        self.node.destroy_node()
+# NOTE: the /cmd_vel watchdog used to live here as an in-process rclpy node, but an
+# rclpy participant created inside this Isaac process does not receive messages from
+# other processes (teleop / dock_controller / HMI panel), so the robot never drove. It
+# now runs out-of-process as scripts/cmd_vel_watchdog.py, launched below. The scan
+# filter stays in-process because it only relays INTRA-process traffic (the OmniGraph's
+# /scan_raw), which works fine.
 
 
 class ScanFilter:
@@ -573,12 +546,20 @@ omni.timeline.get_timeline_interface().play()
 
 # Small in-process ROS nodes (share one rclpy context; single shutdown at the end).
 ros_nodes = []
+
+# cmd_vel watchdog: MUST run out-of-process. An rclpy node created inside this Isaac
+# process (which already hosts Isaac's rclcpp ROS 2 bridge participant) does not receive
+# messages from OTHER processes, so teleop / dock_controller / the HMI panel publish
+# /cmd_vel and the in-process relay never saw them — the robot wouldn't drive. Launching
+# scripts/cmd_vel_watchdog.py as a child process fixes that (rclpy receives external
+# traffic normally there); it relays /cmd_vel -> /cmd_vel_watchdog, which the OmniGraph
+# SubTwist reads. The child inherits this process's sim DDS env (domain 0, localhost).
+watchdog_proc = None
 try:
-    watchdog = CmdVelWatchdog()
-    ros_nodes.append(watchdog)
-    print(f"[spawn] cmd_vel watchdog active (timeout {CMD_VEL_TIMEOUT}s)")
+    _wd_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cmd_vel_watchdog.py")
+    watchdog_proc = subprocess.Popen([sys.executable, _wd_path])
+    print(f"[spawn] cmd_vel watchdog launched (pid {watchdog_proc.pid}, timeout {CMD_VEL_TIMEOUT}s)")
 except Exception as e:
-    watchdog = None
     print(f"[spawn] WARNING: cmd_vel watchdog disabled ({e}); robot will not auto-stop")
 if ENABLE_LIDAR and SCAN_MIN_RANGE > 0:
     try:
@@ -601,6 +582,12 @@ while sim_app.is_running():
 
 for n in ros_nodes:
     n.close()
+if watchdog_proc is not None and watchdog_proc.poll() is None:
+    watchdog_proc.terminate()
+    try:
+        watchdog_proc.wait(timeout=3)
+    except subprocess.TimeoutExpired:
+        watchdog_proc.kill()
 try:
     import rclpy
     if rclpy.ok():

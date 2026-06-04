@@ -86,8 +86,18 @@ isaac-hmi                         # = SPAWN_HMI=1 isaac-py scripts/spawn_turtleb
 # Terminal 2 — action server + battery (needed for Dock/Undock + Battery readout)
 isaac-ros ; isaac-dockd
 ```
-If the panel isn't visible, dock it from *Window ▸ TurtleBot4 HMI* (or enable manually via
-*Window ▸ Extensions* ▸ add `~/isaac_tb4/extensions` to the search paths ▸ toggle it on).
+**`isaac-dockd` must reach the panel on the sim's domain 0.** It now self-pins to the sim
+DDS (domain 0, localhost, no discovery server) on startup, so it connects even if you forget
+`isaac-ros` first — but running `isaac-ros` first is still the convention. The panel proves
+the link visually: the **light ring turns green** (docked) within a second or two of
+`isaac-dockd` coming up. If it stays **dim blue ("connecting…")** and Battery/Dock read `—`,
+the panel and dockd aren't on the same domain (or dockd isn't running).
+
+If the panel itself isn't visible, dock it from *Window ▸ TurtleBot4 HMI* (or enable manually
+via *Window ▸ Extensions* ▸ add `~/isaac_tb4/extensions` to the search paths ▸ toggle it on).
+If Dock/Undock stay `idle` *and* Battery shows `—` even with the ring not green, the in-panel
+ROS bridge failed to start — look in the `isaac-hmi` launch terminal for
+`[tb4_hmi] ROS bridge failed to start: …` and report that line.
 
 **Check by eye:**
 - Panel loads and docks; **light ring** shows green while docked (rotating "comet" = charging),

@@ -113,6 +113,30 @@ keyboard via SLAM + a scripted teleop routine (run the sim in the DEFAULT config
 A sample map built this way is at `maps/A-1_phase3_map.pgm/.yaml` (PNG render in
 `verify/artifacts/`). RViz / visual nav sign-off is left to a human.
 
+## HMI panel (Phase 4 — Isaac Sim GUI extension)
+`extensions/tb4_hmi/` is a dockable Isaac Sim extension that mimics the Create 3 HMI:
+a 6-segment **light ring**, **battery %**, **Dock/Undock** buttons, **teleop** nudges,
+and an **E-STOP**. It hosts its own `rclpy` node inside the Isaac process and talks to the
+sim on domain 0 (the env `run_isaacsim.sh` already sets) — no extra setup, but it is
+**GUI only**, so enable it in the Isaac Sim window:
+
+    isaac-hmi            # = SPAWN_HMI=1 isaac-py scripts/spawn_turtlebot4.py
+    # for Dock/Undock + Battery, in another shell:
+    isaac-ros ; isaac-dockd
+
+`SPAWN_HMI` defaults OFF, so the verified spawn path is untouched. (Manual enable: *Window ▸
+Extensions* ▸ add `~/isaac_tb4/extensions` to the search paths ▸ toggle **TurtleBot4 HMI**.)
+
+New robot interfaces this adds (real-TB4 parity):
+
+| topic | type | dir | meaning |
+|-------|------|-----|---------|
+| /battery_state | sensor_msgs/msg/BatteryState | pub (dock_controller) | charges docked, drains undocked |
+| /cmd_lightring | irobot_create_msgs/msg/LightringLeds | pub (panel) | 6-LED ring command, mirrors the panel ring |
+
+Light-ring state→color mapping and threading notes: `extensions/tb4_hmi/docs/README.md`.
+The panel and ring are GUI — verify them in the Isaac Sim window (see `TESTING.md`).
+
 ## Realistic driving (matches the real TurtleBot4)
 - **Wheels are velocity-driven.** The URDF import left the wheels in *position* drive
   (stiffness 625, damping 0) so /cmd_vel barely moved the robot. They're now velocity

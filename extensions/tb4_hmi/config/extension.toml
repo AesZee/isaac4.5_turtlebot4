@@ -1,0 +1,16 @@
+[package]
+version = "0.1.0"
+title = "TurtleBot4 HMI"
+description = "Ignition-style HMI panel for the Isaac TurtleBot4 sim: Create-3 light ring, dock/undock, battery, teleop nudges, and E-STOP — all driven over the sim's ROS 2 (domain 0)."
+authors = ["isaac_tb4"]
+category = "Robotics"
+keywords = ["turtlebot4", "ros2", "hmi", "create3", "lightring"]
+readme = "docs/README.md"
+
+# Loads after the UI app + ROS 2 bridge so omni.ui and the DDS env are ready.
+[dependencies]
+"omni.ui" = {}
+"omni.kit.uiapp" = {}
+
+[[python.module]]
+name = "tb4_hmi"

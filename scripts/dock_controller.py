@@ -2,9 +2,15 @@
 """Dock / undock controller for the Isaac TurtleBot4 sim.
 
 Exposes the SAME ROS interfaces as the real Create3 base:
-    /dock        action  irobot_create_msgs/action/Dock
-    /undock      action  irobot_create_msgs/action/Undock
-    /dock_status topic   irobot_create_msgs/msg/DockStatus
+    /dock          action  irobot_create_msgs/action/Dock
+    /undock        action  irobot_create_msgs/action/Undock
+    /dock_status   topic   irobot_create_msgs/msg/DockStatus
+    /battery_state topic   sensor_msgs/msg/BatteryState
+
+The sim has no real battery, so /battery_state is a behavioral stand-in for the
+real Create3 fuel gauge: it charges while docked and drains while undocked, so the
+HMI panel and any battery-aware logic have a live signal that matches the real
+robot's topic name + type. The numbers are synthetic, not a real cell model.
 
 There are no IR dock sensors in the sim, so docking is *behavioral*: a simple
 controller drives the robot with /cmd_vel using /odom feedback. The robot spawns
@@ -37,6 +43,7 @@ from rclpy.node import Node
 
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
+from sensor_msgs.msg import BatteryState
 from irobot_create_msgs.action import Dock, Undock
 from irobot_create_msgs.msg import DockStatus
 
@@ -55,6 +62,16 @@ DOCK_VISIBLE_RANGE = 1.0           # m  — report dock_visible / sees_dock with
 DOCK_TIMEOUT = 45.0                # s  — hard cap on the approach phase
 YAW_TIMEOUT = 10.0                 # s  — hard cap on the final-heading phase
 CTRL_HZ = 20.0
+
+# ── synthetic battery (Create3 fuel-gauge stand-in) ──────────────────────────
+BATTERY_HZ          = 1.0          # /battery_state publish rate (real robot ~1 Hz)
+BATTERY_START_PCT   = 1.0          # spawns docked + full
+BATTERY_DRAIN_PER_S = 0.0030       # 0.30 %/s while undocked  (~5.5 min full→empty)
+BATTERY_CHARGE_PER_S= 0.0080       # 0.80 %/s while docked    (~2 min empty→full)
+BATTERY_FULL_PCT    = 0.999        # treat ≥ this as "full" (status FULL, not CHARGING)
+BATTERY_V_EMPTY     = 12.0         # V at 0%   (Create3 ~14.4 V pack)
+BATTERY_V_FULL      = 14.4         # V at 100%
+BATTERY_CAPACITY_AH = 2.6          # design capacity (Create3 ~2.6 Ah), for charge/current
 
 
 def _norm(a):
@@ -75,8 +92,14 @@ class DockController(Node):
 
         self.cmd_pub = self.create_publisher(Twist, "/cmd_vel", 10)
         self.status_pub = self.create_publisher(DockStatus, "/dock_status", 10)
+        self.battery_pub = self.create_publisher(BatteryState, "/battery_state", 10)
         self.create_subscription(Odometry, "/odom", self._odom_cb, 10, callback_group=cb)
         self.create_timer(0.5, self._publish_status, callback_group=cb)
+
+        # synthetic battery integrated from is_docked using wall-clock dt
+        self.battery_pct = BATTERY_START_PCT
+        self._batt_last = time.monotonic()
+        self.create_timer(1.0 / BATTERY_HZ, self._publish_battery, callback_group=cb)
 
         self._dock_srv = ActionServer(
             self, Dock, "dock",
@@ -112,6 +135,42 @@ class DockController(Node):
         msg.dock_visible = self._dock_distance() < DOCK_VISIBLE_RANGE
         msg.is_docked = self.is_docked
         self.status_pub.publish(msg)
+
+    def _publish_battery(self):
+        now = time.monotonic()
+        dt = max(0.0, now - self._batt_last)
+        self._batt_last = now
+
+        # charge while docked, drain while undocked; clamp to [0, 1]
+        if self.is_docked:
+            self.battery_pct = min(1.0, self.battery_pct + BATTERY_CHARGE_PER_S * dt)
+        else:
+            self.battery_pct = max(0.0, self.battery_pct - BATTERY_DRAIN_PER_S * dt)
+        pct = self.battery_pct
+
+        if self.is_docked:
+            status = (BatteryState.POWER_SUPPLY_STATUS_FULL if pct >= BATTERY_FULL_PCT
+                      else BatteryState.POWER_SUPPLY_STATUS_CHARGING)
+        else:
+            status = BatteryState.POWER_SUPPLY_STATUS_DISCHARGING
+
+        bat = BatteryState()
+        bat.header.stamp = self.get_clock().now().to_msg()
+        bat.header.frame_id = "base_link"
+        bat.voltage = BATTERY_V_EMPTY + (BATTERY_V_FULL - BATTERY_V_EMPTY) * pct
+        bat.temperature = 25.0
+        # current: + while charging, − while discharging (rough, for display realism)
+        bat.current = (BATTERY_CAPACITY_AH * BATTERY_CHARGE_PER_S * 3600.0 if self.is_docked
+                       else -BATTERY_CAPACITY_AH * BATTERY_DRAIN_PER_S * 3600.0)
+        bat.charge = BATTERY_CAPACITY_AH * pct
+        bat.capacity = BATTERY_CAPACITY_AH
+        bat.design_capacity = BATTERY_CAPACITY_AH
+        bat.percentage = pct
+        bat.power_supply_status = status
+        bat.power_supply_health = BatteryState.POWER_SUPPLY_HEALTH_GOOD
+        bat.power_supply_technology = BatteryState.POWER_SUPPLY_TECHNOLOGY_LION
+        bat.present = True
+        self.battery_pub.publish(bat)
 
     # ── motion helpers ──────────────────────────────────────────────────────
     def _drive(self, lin=0.0, ang=0.0):

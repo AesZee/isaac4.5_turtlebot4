@@ -4,7 +4,7 @@ Resume protocol: read this top-to-bottom, then continue from **Next action**. Up
 table + Next action + Log after every completed or failed step. Keep entries short (context hygiene).
 
 ## Branch
-- work branch: feat/oakd-phases-1-3
+- work branch: feat/phase4-hmi (Phases 1–3 merged to master; last commit 5845a10)
 - last green commit: c99ad24 (baseline gate green)
 
 ## Environment notes (for resume)
@@ -25,15 +25,14 @@ table + Next action + Log after every completed or failed step. Keep entries sho
 | 1 — OAK-D RGB + depth + points | GREEN | PASS | 4 /oakd topics @rate; camera_info frame+K ok; frames saved; commit 380ead2 |
 | 2 — detection + spatial 3D | GREEN | PASS | red_cube @ finite 3D (0.006,0.019,0.641)m; vendored depthai_ros_msgs; commit b9ccad1 |
 | 3 — lidar/SLAM regression guard | GREEN | PASS | base+/scan intact; map maps/A-1_phase3_map.* (60/10/30); commit 9410f41 |
-| 4 — HMI extension | **DEFERRED (manual/GUI)** | — | do NOT attempt unattended |
+| 4 — HMI extension | **BUILT — awaiting GUI sign-off** | — | code complete + offline-validated; GUI verify is the human's (TESTING.md Phase 4) |
 
 ## Next action
-DONE — Phases 1–3 all GREEN on branch feat/oakd-phases-1-3. Awaiting human: (1) visual sign-off of
-verify/artifacts/ (oakd_rgb.png, oakd_depth.png, A-1_phase3_map.png) + RViz/nav; (2) decide whether
-to fold the env-gated camera/cube into committed defaults or keep as-is; (3) Phase 4 (HMI GUI) which
-was DEFERRED and not attempted. Optional: add isaac-* aliases for the new entry points (see below) —
-NOT added because editing the global ~/.bashrc unattended was out of scope; commands are documented
-instead. Sim + SLAM may still be running in the background (check `pgrep -f spawn_turtlebot[4]`).
+Phases 1–3 GREEN. **Phase 4 (HMI) BUILT** on branch feat/phase4-hmi (attended, with the human running
+the GUI). Code complete + offline-validated (py_compile + Isaac-Python import of rclpy/actions/
+LightringLeds). GUI behavior NOT verifiable headless — awaiting human sign-off per TESTING.md Phase 4:
+run `isaac-hmi` + `isaac-dockd`, confirm panel/ring/battery/dock/teleop/e-stop, then `./verify/
+check_topics.sh` for regression. Not yet committed.
 
 ## Suggested aliases for the human (add to ~/.bashrc; not added unattended)
 - isaac-oakd-frames : python3 ~/isaac_tb4/verify/save_oakd_frames.py
@@ -73,4 +72,15 @@ proceeding would require touching the real-robot config or a second Isaac instan
   frame rplidar_link, 360deg, range_min 0.32 (filter intact). isaac-slam + verify/scripted_teleop.py
   (bounded /cmd_vel sweep) built a map; map_saver -> maps/A-1_phase3_map.pgm/.yaml (60% free/10% occ/
   30% unknown, valid). verify/check_map.sh PASS. PNG render in artifacts/. Commit 9410f41.
-- ALL PHASES 1-3 GREEN. Phase 4 (HMI) deliberately NOT attempted (deferred/GUI).
+- ALL PHASES 1-3 GREEN. Phase 4 (HMI) deliberately NOT attempted unattended (deferred/GUI).
+- phase4 BUILT (attended, human drives GUI): new Isaac extension extensions/tb4_hmi/ (omni.ext IExt +
+  omni.ui dockable panel): 6-seg light ring, battery %, Dock/Undock buttons, teleop nudges, E-STOP.
+  Hosts its own rclpy node on the Isaac process (domain 0, already set by run_isaacsim.sh) spun on a
+  daemon thread; omni.kit update-event callback marshals state to omni.ui on the main thread. Verified
+  feasibility first: rclpy + irobot_create_msgs (Dock/Undock + LightringLeds) import under isaac-py.
+  Battery: folded a synthetic /battery_state (sensor_msgs/BatteryState; charges docked / drains
+  undocked) into dock_controller.py. Panel publishes /cmd_lightring (irobot_create_msgs/LightringLeds).
+  Loading: SPAWN_HMI=1 gate in spawn_turtlebot4.py (default OFF, verified path untouched) adds
+  extensions/ to the ext search path + enable_extension("tb4_hmi"); alias isaac-hmi added to ~/.bashrc.
+  Docs: README + COMMANDS + TESTING (Phase 4) + extensions/tb4_hmi/docs/README.md. Offline-validated
+  (py_compile all; isaac-py import check; leds[6] assignment). GUI sign-off pending (human).

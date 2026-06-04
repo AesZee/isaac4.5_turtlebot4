@@ -64,6 +64,20 @@ isaac-dock           # drive back onto the dock and align
 ros2 topic echo /dock_status      # is_docked / dock_visible
 ```
 
+### HMI panel (Phase 4 — Isaac Sim GUI extension)
+A dockable panel that mimics the Create 3 HMI: 6-segment light ring, battery %, dock/undock
+buttons, teleop nudges, E-STOP. GUI only — enable it in the Isaac Sim window.
+```bash
+isaac-hmi            # = SPAWN_HMI=1 isaac-py scripts/spawn_turtlebot4.py  (spawn + load the panel)
+# start the action server + battery in another shell so Dock/Undock + Battery work:
+isaac-ros ; isaac-dockd
+```
+Or enable manually: *Window ▸ Extensions* ▸ add `~/isaac_tb4/extensions` to the search paths ▸
+toggle **TurtleBot4 HMI** on. The panel publishes `/cmd_lightring`
+(`irobot_create_msgs/msg/LightringLeds`) and reads `/dock_status` + `/battery_state`
+(`sensor_msgs/msg/BatteryState`, from `dock_controller.py`: charges docked, drains undocked).
+Light-ring mapping + details: `extensions/tb4_hmi/docs/README.md`.
+
 ### Navigation / SLAM / RViz (sim time)
 Run each in its own `isaac-ros` shell. `isaac-nav` has no map->odom on its own, so
 pair it with SLAM (or localization + a saved map):
@@ -86,6 +100,7 @@ isaac-rviz           # RViz: set a "Nav2 Goal"        (use_sim_time:=true)
 | `isaac-nav`    | `ros2 launch turtlebot4_navigation nav2.launch.py use_sim_time:=true` |
 | `isaac-slam`   | `ros2 launch turtlebot4_navigation slam.launch.py use_sim_time:=true` |
 | `isaac-rviz`   | `ros2 launch turtlebot4_viz view_robot.launch.py use_sim_time:=true` |
+| `isaac-hmi`    | `SPAWN_HMI=1 $HOME/run_isaacsim.sh python $HOME/isaac_tb4/scripts/spawn_turtlebot4.py` |
 
 ## Typical session
 ```bash

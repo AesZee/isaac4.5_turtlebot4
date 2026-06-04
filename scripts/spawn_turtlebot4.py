@@ -29,6 +29,7 @@ ART_ROOT   = "/World/Turtlebot4/base_link"   # articulation root / base rigid bo
 # ── options ────────────────────────────────────────────────────────────────
 ENABLE_LIDAR = True
 HEADLESS     = os.environ.get("SPAWN_HEADLESS", "0") == "1"
+ENABLE_HMI   = os.environ.get("SPAWN_HMI", "0") == "1"   # load extensions/tb4_hmi GUI panel
 # The URDF mounts the lidar on shell_link (+0.0987 m), but that fixed-joint offset
 # collapsed in the USD conversion: rplidar_link ends up only ~0.064 m above
 # base_link, so the RTX lidar sits at body height and its beams hit the robot's own
@@ -166,6 +167,16 @@ sim_app = SimulationApp({"headless": HEADLESS})
 from isaacsim.core.utils.extensions import enable_extension
 for ext in ("isaacsim.ros2.bridge", "isaacsim.robot.wheeled_robots", "isaacsim.sensors.rtx"):
     enable_extension(ext)
+
+# Optional HMI panel (Phase 4). Off by default so the verified spawn path is
+# untouched; SPAWN_HMI=1 registers extensions/ and enables the dockable panel.
+if ENABLE_HMI:
+    import omni.kit.app
+    _ext_root = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "extensions")
+    omni.kit.app.get_app().get_extension_manager().add_path(_ext_root)
+    enable_extension("tb4_hmi")
+    print(f"[spawn] HMI panel enabled from {_ext_root}")
+
 sim_app.update()
 
 import omni.usd

@@ -19,6 +19,7 @@ The spawn script is windowed by default — you only get headless if you set
 | `SPAWN_NO_DOCK` | unset | `1` = omit the visual dock (clear forward view) |
 | `SPAWN_YAW` | `0.0` | spawn heading, radians (`3.14159` = face the open room) |
 | `SPAWN_KNOWN_OBJECT` | unset | `1` = spawn the red detection cube |
+| `SPAWN_HMI` | unset | `1` = load the HMI panel extension (Phase 4) |
 
 With none set: windowed, docked, yaw 0, no cube, OAK-D on (the verified default).
 
@@ -77,7 +78,28 @@ ros2 run nav2_map_server map_saver_cli -f maps/my_test_map --ros-args -p use_sim
 **PASS** = base `/scan /odom /tf /clock /cmd_vel` contract still alive, `/scan`
 frame `rplidar_link` filtered at `SCAN_MIN_RANGE`, and a non-empty map saved.
 
+## Phase 4 — HMI panel (GUI only)
+This one is inherently GUI — there's no headless gate to run; verify it by eye.
+```bash
+# Terminal 1 — windowed sim WITH the HMI panel loaded
+isaac-hmi                         # = SPAWN_HMI=1 isaac-py scripts/spawn_turtlebot4.py
+# Terminal 2 — action server + battery (needed for Dock/Undock + Battery readout)
+isaac-ros ; isaac-dockd
+```
+If the panel isn't visible, dock it from *Window ▸ TurtleBot4 HMI* (or enable manually via
+*Window ▸ Extensions* ▸ add `~/isaac_tb4/extensions` to the search paths ▸ toggle it on).
+
+**Check by eye:**
+- Panel loads and docks; **light ring** shows green while docked (rotating "comet" = charging),
+  flips to **white** after Undock.
+- **Battery** climbs while docked, falls after Undock; **Dock** line reads docked/undocked.
+- **Undock** reverses + turns the robot (same as `isaac-undock`); **Dock** returns it; the
+  **Action** line tracks sending → running → succeeded.
+- **Teleop** taps nudge the robot; **E-STOP** latches it stopped and the ring goes red pulse.
+- Cross-check the ring topic: `isaac-ros ; ros2 topic echo /cmd_lightring --once`.
+- **Regression:** `/scan /odom /tf /clock /cmd_vel` still publish (`./verify/check_topics.sh`).
+
 ---
 
 See `README.md` / `COMMANDS.md` for the full reference, and `STATUS.md` for the
-phase log. Phase 4 (HMI GUI) was deferred — not implemented.
+phase log.

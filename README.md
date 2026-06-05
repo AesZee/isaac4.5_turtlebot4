@@ -4,6 +4,17 @@ Working folder for Isaac Sim 4.5 + TurtleBot4 (ROS 2 Humble).
 Full setup notes: ~/Downloads/isaacsim_turtlebot4_setup.md
 Terminal command cheat sheet: [COMMANDS.md](COMMANDS.md)
 
+## Status — Phases 1–4 complete ✅
+All phases are merged to `master` and verified-working. Last full re-verification **2026-06-05**
+(Phases 1–3 via the headless gates below; Phase 4 is GUI-only and human-signed-off):
+
+| phase | what | gate | last verified |
+|-------|------|------|---------------|
+| 1 | OAK-D RGB + depth + points + camera_info | `check_topics.sh` + `save_oakd_frames.py` | 2026-06-05 ✅ |
+| 2 | spatial 3D detection (`/oakd/nn/spatial_detections`) | `check_spatial_detection.py` — `red_cube` @ finite 3D | 2026-06-05 ✅ |
+| 3 | lidar/SLAM regression guard + scripted map | `check_map.sh` — `/scan` frame+filter intact, valid map | 2026-06-05 ✅ |
+| 4 | HMI Isaac Sim GUI extension | human GUI sign-off (GUI-only — not headless-verifiable) | 2026-06-05 ✅ |
+
 ## Layout
 - scripts/  Python scripts (run with `isaac-py <file>`): spawn, dock controller, OAK-D detection
 - verify/   scripted acceptance gates + `artifacts/` (sample frames, detection msg, map render)
@@ -29,7 +40,9 @@ Use TWO terminals.
 ### Terminal 1 — launch the sim (this IS isaac + the scene; do NOT also run `isaac`)
     isaac-py ~/isaac_tb4/scripts/spawn_turtlebot4.py
 - First load ~1-2 min. Window opens, robot appears in the mapped room, auto-plays.
-- Robot auto-spawns at the most open free cell of the map (~ -0.69, 0.32).
+- Robot spawns **docked at the map origin `(0, 0)`, yaw 0** — the verified default
+  (`SPAWN_XY`/`SPAWN_YAW` in `scripts/spawn_turtlebot4.py`). Set `SPAWN_XY = None` to
+  instead auto-pick the most open free cell of the map (~ -0.69, 0.32).
 - Ctrl-C here stops the sim. Keep it running while you use Terminal 2.
 
 ### Terminal 2 — talk to the sim

@@ -1,11 +1,12 @@
-# STATUS — unattended Phases 1–3
+# STATUS — Phases 1–4 complete (merged to master)
 
 Resume protocol: read this top-to-bottom, then continue from **Next action**. Update the phase
 table + Next action + Log after every completed or failed step. Keep entries short (context hygiene).
 
 ## Branch
-- work branch: feat/phase4-hmi (Phases 1–3 merged to master; last commit 5845a10)
-- last green commit: c99ad24 (baseline gate green)
+- master (Phases 1–4 all merged; last commit 54e7368, pushed to origin/master)
+- feature branches feat/phase4-hmi and feat/oakd-phases-1-3 pruned (local + origin)
+- last green commit: 54e7368 (Phase 4 HMI verified working)
 
 ## Environment notes (for resume)
 - Sim: launched headless+render via `SPAWN_HEADLESS=1 ~/run_isaacsim.sh python scripts/spawn_turtlebot4.py`,
@@ -28,9 +29,10 @@ table + Next action + Log after every completed or failed step. Keep entries sho
 | 4 — HMI extension | GREEN | PASS | human GUI sign-off: panel/ring/battery/dock/teleop/e-stop all confirmed in Isaac Sim window |
 
 ## Next action
-ALL PHASES 1–4 GREEN. Phase 4 (HMI) signed off by the human in the Isaac Sim GUI: panel docks,
-ring tracks dock/charge state, battery % updates, Dock/Undock + teleop nudges drive, E-STOP halts.
-Committed on branch feat/phase4-hmi. Nothing pending — ready to merge to master when desired.
+ALL PHASES 1–4 GREEN and MERGED TO MASTER. Phase 4 (HMI) signed off by the human in the Isaac Sim
+GUI: panel docks, ring tracks dock/charge state, battery % updates, Dock/Undock + teleop nudges
+drive, E-STOP halts. Fast-forwarded into master (54e7368), pushed to origin, and the merged feature
+branches pruned. Nothing pending — repo is on a single clean master.
 
 ## Suggested aliases for the human (add to ~/.bashrc; not added unattended)
 - isaac-oakd-frames : python3 ~/isaac_tb4/verify/save_oakd_frames.py
@@ -85,3 +87,6 @@ proceeding would require touching the real-robot config or a second Isaac instan
 - phase4 GREEN: human verified isaac-hmi in the Isaac Sim GUI — panel docks, light ring tracks
   dock/charge state, battery % updates, Dock/Undock + teleop nudges drive the robot, E-STOP halts.
   README + STATUS updated to verified-working; committed on feat/phase4-hmi. ALL PHASES 1-4 GREEN.
+- merge: fast-forwarded feat/phase4-hmi into master (5845a10..54e7368, linear history per repo
+  convention), pushed master to origin. Pruned merged branches feat/phase4-hmi (local-only) and
+  feat/oakd-phases-1-3 (local + origin). Repo is now a single clean master in sync with origin.

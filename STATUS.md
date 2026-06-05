@@ -22,11 +22,11 @@ table + Next action + Log after every completed or failed step. Keep entries sho
 ## Phases
 | phase | state | last gate | notes |
 |-------|-------|-----------|-------|
-| baseline (verified contract) | GREEN | PASS | gate fixed (DDS env + pipefail/grep-q false-neg); commit c99ad24 |
-| 1 — OAK-D RGB + depth + points | GREEN | PASS | 4 /oakd topics @rate; camera_info frame+K ok; frames saved; commit 380ead2 |
-| 2 — detection + spatial 3D | GREEN | PASS | red_cube @ finite 3D (0.006,0.019,0.641)m; vendored depthai_ros_msgs; commit b9ccad1 |
-| 3 — lidar/SLAM regression guard | GREEN | PASS | base+/scan intact; map maps/A-1_phase3_map.* (60/10/30); commit 9410f41 |
-| 4 — HMI extension | GREEN | PASS | human GUI sign-off: panel/ring/battery/dock/teleop/e-stop all confirmed in Isaac Sim window |
+| baseline (verified contract) | GREEN | PASS 06-05 | gate fixed (DDS env + pipefail/grep-q false-neg); commit c99ad24 |
+| 1 — OAK-D RGB + depth + points | GREEN | PASS 06-05 | 4 /oakd topics @rate; camera_info frame+K ok; frames saved; commit 380ead2 |
+| 2 — detection + spatial 3D | GREEN | PASS 06-05 | red_cube @ finite 3D (0.006,0.019,0.641)m; vendored depthai_ros_msgs; commit b9ccad1 |
+| 3 — lidar/SLAM regression guard | GREEN | PASS 06-05 | base+/scan intact; map maps/A-1_phase3_map.* (60/10/30); commit 9410f41 |
+| 4 — HMI extension | GREEN | GUI 06-05 | human GUI sign-off: panel/ring/battery/dock/teleop/e-stop all confirmed in Isaac Sim window |
 
 ## Next action
 ALL PHASES 1–4 GREEN and MERGED TO MASTER. Phase 4 (HMI) signed off by the human in the Isaac Sim
@@ -90,3 +90,10 @@ proceeding would require touching the real-robot config or a second Isaac instan
 - merge: fast-forwarded feat/phase4-hmi into master (5845a10..54e7368, linear history per repo
   convention), pushed master to origin. Pruned merged branches feat/phase4-hmi (local-only) and
   feat/oakd-phases-1-3 (local + origin). Repo is now a single clean master in sync with origin.
+- re-verify 2026-06-05: re-ran all gates on a fresh headless+render sim (one instance at a time;
+  torn down by PID, GPU freed). Phase 3 check_map.sh PASS (/scan rplidar_link, 360deg, range_min
+  0.32; map 60/10/30). Phase 1 check_topics.sh + save_oakd_frames PASS (4 /oakd topics @rate;
+  camera_info oakd_rgb_camera_optical_frame, K fx/fy 465.45 cx320 cy180; RGB+depth 640x360). Phase 2
+  (cube config) check_spatial_detection PASS (red_cube score 0.41 @ (0.006,0.019,0.641)m). Phase 4
+  GUI-only: human re-confirmed isaac-hmi works (not headless-verifiable). Regenerated verify
+  artifacts reverted; tree clean. README given a status table + spawn-pose fix (commit 5aeccfe).

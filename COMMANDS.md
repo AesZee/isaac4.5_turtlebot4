@@ -3,6 +3,9 @@
 Quick reference for driving the TurtleBot4 Isaac Sim. Aliases are defined in `~/.bashrc`
 (run `source ~/.bashrc` after editing it). See `README.md` for details.
 
+**Status:** Phases 1–4 complete and verified-working (last re-verify 2026-06-05). The per-phase
+acceptance gate is shown inline in each section below; see the status table in `README.md`.
+
 ## Terminal 1 — launch the sim
 ```bash
 isaac-py ~/isaac_tb4/scripts/spawn_turtlebot4.py     # launch sim + scene + robot (auto-plays)
